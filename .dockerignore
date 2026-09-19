@@ -1,0 +1,15 @@
+.git
+.github
+client/node_modules
+client/dist
+client/*.tsbuildinfo
+server/.venv
+server/.pytest_cache
+server/**/__pycache__
+server/data
+deploy/demo/data
+deploy/demo/logs
+deploy/demo/backups
+deploy/demo/images
+*.db
+*.pyc

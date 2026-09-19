@@ -1,0 +1,4 @@
+VelaMesh Demo 0.2.0
+Issue: OPE-86
+Architecture: FastAPI + Vue production assets + SQLite + Mosquitto
+Release commit: use the local Git HEAD recorded in the delivery handoff

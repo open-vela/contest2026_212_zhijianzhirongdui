@@ -5,12 +5,18 @@
     (openvela.xml in this same repo) and adds this team repo as a self-ref
     project, exposing its work-form subdirectories to openvela working-tree
     locations via <linkfile>. remote/default come from the included openvela.xml.
+
+    VelaMesh (枢络) work forms:
+      app/vela_edge  -> NSH app on XIAO ESP32S3 Sense edge slave nodes
+      app/vela_hub   -> NSH app on the R528 fusion hub node
+      board/xiao_esp32s3_sense -> XIAO ESP32S3 Sense board adaptation
+    The quickapp form is not used by this project.
   -->
   <include name="openvela.xml"/>
 
   <project path="contest2026_212_zhijianzhirongdui" name="contest2026_212_zhijianzhirongdui">
-    <linkfile src="app/hello_app" dest="packages/demos/contest2026_212_hello_app"/>
-    <linkfile src="quickapp/hello_quickapp" dest="packages/apps/contest2026_212_hello_quickapp"/>
-    <linkfile src="board/contest_board" dest="vendor/openvela/boards/contest2026_212_board"/>
+    <linkfile src="app/vela_edge" dest="packages/demos/contest2026_212_vela_edge"/>
+    <linkfile src="app/vela_hub" dest="packages/demos/contest2026_212_vela_hub"/>
+    <linkfile src="board/xiao_esp32s3_sense" dest="vendor/openvela/boards/contest2026_212_xiao_esp32s3_sense"/>
   </project>
 </manifest>

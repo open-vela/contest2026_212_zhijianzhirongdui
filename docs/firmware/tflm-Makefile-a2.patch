@@ -1,0 +1,7 @@
+131a132,137
+> # A2 EXPERIMENT (OPE-49): when CONFIG_IDF_TARGET_ESP32S3 is set, route the
+> # esp_nn kernels to the S3 vector-assembly path (esp_nn_esp32s3.h). The S3
+> # .S/*_esp32s3.c sources must also be compiled — see esp-nn/Makefile.
+> ifeq ($(CONFIG_IDF_TARGET_ESP32S3),y)
+> COMMON_FLAGS += -DCONFIG_IDF_TARGET_ESP32S3
+> endif

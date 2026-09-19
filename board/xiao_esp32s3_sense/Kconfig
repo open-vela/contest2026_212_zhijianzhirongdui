@@ -1,0 +1,11 @@
+#
+# Contest 2026 team 212 - XIAO ESP32S3 Sense board adaptation
+#
+
+if ARCH_BOARD_CONTEST2026_212_XIAO_ESP32S3_SENSE
+
+config ARCH_BOARD_CONTEST2026_212_XIAO_ESP32S3_SENSE_TAG
+	string "Board tag"
+	default "contest2026_212_xiao_esp32s3_sense"
+
+endif

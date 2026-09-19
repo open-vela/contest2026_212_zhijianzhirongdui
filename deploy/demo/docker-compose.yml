@@ -1,0 +1,68 @@
+services:
+  app:
+    image: ${DOMINISCIUS_IMAGE:-dominiscius-demo:0.2.0}
+    pull_policy: never
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.2.0}
+        APP_UID: ${APP_UID:-1000}
+    container_name: dominiscius-demo-app
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      STATIC_DIR: /app/server/static
+      DATABASE_URL: sqlite+aiosqlite:////app/server/data/dominiscius.db
+      LOG_DIR: /app/server/logs
+      MQTT_BROKER: mqtt
+      MQTT_PORT: 1883
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./data/app:/app/server/data
+      - ./logs/app:/app/server/logs
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2))['status']=='ok'"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  mqtt:
+    image: eclipse-mosquitto:2.0.20
+    pull_policy: never
+    container_name: dominiscius-demo-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./data/mqtt:/mosquitto/data
+      - ./logs/mqtt:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+networks:
+  default:
+    name: dominiscius-demo-net

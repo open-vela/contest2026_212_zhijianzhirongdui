@@ -1,0 +1,18 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config LVX_USE_DEMO_CONTEST2026_212_VELA_HUB
+	bool "Contest 2026 team 212 VelaMesh fusion hub (R528)"
+	default n
+	---help---
+		Enable the VelaMesh (枢络) R528 main-control fusion node
+		application.
+
+		Subscribes to edge-node MQTT evidence topics (face embeddings,
+		gait silhouettes, BLE proximity), fuses multimodal identity
+		evidence into identity/access decisions, and triggers Skills.
+
+		Stage 1 builds a stub main loop; MQTT subscription, the fusion
+		engine and Skill triggers are filled in by follow-up tasks.

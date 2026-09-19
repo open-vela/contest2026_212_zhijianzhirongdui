@@ -1,0 +1,30 @@
+52a53,81
+> ifeq ($(CONFIG_IDF_TARGET_ESP32S3),y)
+> # ── A2 EXPERIMENT (OPE-49): S3 vector-instruction assembly path ──
+> # Prior "ABI fault" diagnosis may have been a build artifact: the S3 dispatch
+> # (esp_nn.h routes to esp_nn_*_esp32s3) was enabled via CONFIG_IDF_TARGET_ESP32S3
+> # but the .S / *_esp32s3.c sources were NEVER added to CSRCS, so the called
+> # symbols were absent → call to NULL → VADDR=0 StoreProhibited crash. This
+> # block actually compiles them. esp_nn.h then defines ARCH_ESP32_S3 and
+> # includes esp_nn_esp32s3.h, routing esp_nn_conv_s8 etc. to the asm kernels.
+> CFLAGS += -DCONFIG_IDF_TARGET_ESP32S3
+> # S3 C wrappers (dispatchers that call the .S vector kernels):
+> CSRCS += $(wildcard $(ESP_NN_SRC)/convolution/esp_nn_conv_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/convolution/esp_nn_conv_s8_1x1_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/convolution/esp_nn_conv_s8_3x3_opt_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/convolution/esp_nn_depthwise_conv_s8_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/fully_connected/esp_nn_fully_connected_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/activation_functions/esp_nn_hard_swish_s8_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/common/esp_nn_mean_s8_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/pooling/esp_nn_avg_pool_s8_esp32s3.c)
+> CSRCS += $(wildcard $(ESP_NN_SRC)/softmax/esp_nn_softmax_s8_esp32s3.c)
+> # S3 Xtensa LX7 vector-instruction assembly (.S — preprocessed).
+> # NuttX Application.mk compiles .S from ASRCS (not CSRCS, which is .c-only).
+> ASRCS += $(wildcard $(ESP_NN_SRC)/common/*_esp32s3.S)
+> ASRCS += $(wildcard $(ESP_NN_SRC)/activation_functions/*_esp32s3.S)
+> ASRCS += $(wildcard $(ESP_NN_SRC)/basic_math/*_esp32s3.S)
+> ASRCS += $(wildcard $(ESP_NN_SRC)/convolution/*_esp32s3.S)
+> ASRCS += $(wildcard $(ESP_NN_SRC)/fully_connected/*_esp32s3.S)
+> ASRCS += $(wildcard $(ESP_NN_SRC)/pooling/*_esp32s3.S)
+> endif
+> 

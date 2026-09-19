@@ -1,0 +1,19 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config LVX_USE_DEMO_CONTEST2026_212_VELA_EDGE
+	bool "Contest 2026 team 212 VelaMesh edge node (XIAO ESP32S3 Sense)"
+	default n
+	---help---
+		Enable the VelaMesh (枢络) edge slave-node application.
+
+		Runs the perception pipeline on XIAO ESP32S3 Sense:
+		OV2640/OV3660 camera DMA capture, gait silhouette pre-filter,
+		MobileFaceNet embedding over TFLite Micro, BLE passive proximity
+		scan, and WiFi/MQTT uplink to the R528 hub node.
+
+		Stage 1 builds a stub main loop; the ported module sources under
+		modules/ are wired in by follow-up tasks behind their feature
+		Kconfig options (TFLITEMICRO / ESP32S3 WiFi / BLE).

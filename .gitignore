@@ -1,0 +1,59 @@
+# ============================================================
+# 枢络 VelaMesh — .gitignore
+# 基于模板 .gitignore.example 启用并按项目情况扩充。
+#
+# 重要：logs/ 下最终导出的 AI Coding 日志必须提交，
+#       本文件【不】忽略 logs/（deploy 运行时日志除外，见下）。
+# ============================================================
+
+# Build artifacts
+build/
+out/
+*.o
+*.a
+*.elf
+*.hex
+*.map
+*.bin
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+server/.venv/
+.venv/
+# 运行时数据库与本地密钥（保留目录占位 .gitkeep）
+server/data/
+*.db
+.env
+
+# Node / client
+client/node_modules/
+node_modules/
+client/dist/
+dist/
+*.tsbuildinfo
+
+# 离线演示镜像与运行时数据/日志（仅 deploy 演练产物；不影响根 logs/ AI 日志）
+deploy/demo/images/*
+!deploy/demo/images/.gitkeep
+deploy/demo/data/app/*
+!deploy/demo/data/app/.gitkeep
+deploy/demo/data/mqtt/*
+!deploy/demo/data/mqtt/.gitkeep
+deploy/demo/backups/*
+!deploy/demo/backups/.gitkeep
+deploy/demo/logs/app/*
+!deploy/demo/logs/app/.gitkeep
+deploy/demo/logs/mqtt/*
+!deploy/demo/logs/mqtt/.gitkeep
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# local repo-workspace marker for the AI coding log collector (not part of submission)
+.repo/
