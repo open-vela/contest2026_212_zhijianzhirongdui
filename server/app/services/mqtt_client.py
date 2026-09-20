@@ -16,28 +16,40 @@ logger = logging.getLogger("mqtt")
 
 
 class MqttClient:
-    """Async-friendly MQTT client that connects to mosquitto broker."""
+    """Async-friendly MQTT client that connects to mosquitto/EMQX broker.
+
+    Supports an automatic fallback to the in-process demo broker so the
+    server starts with zero external dependencies (MQTT_MODE=auto, the
+    default). ``mode`` reports "external" or "embedded" after start.
+    """
 
     def __init__(self):
-        self.client = mqtt.Client(
-            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-            client_id=settings.MQTT_CLIENT_ID,
-            protocol=mqtt.MQTTv311,
-        )
-        # Authenticate if the broker requires it (the ESP32 firmware broker
-        # uses vela-node / vela-secret-2026; the server must match).
-        if settings.MQTT_USERNAME:
-            self.client.username_pw_set(
-                settings.MQTT_USERNAME, settings.MQTT_PASSWORD or None
-            )
-        self.client.on_connect = self._on_connect
-        self.client.on_message = self._on_message
-        self.client.on_disconnect = self._on_disconnect
+        self._broker_host = settings.MQTT_BROKER
+        self._broker_port = settings.MQTT_PORT
+        self._embedded = None
+        self.mode = "external"
+        self.client = self._build_client()
         self._message_handlers: dict[str, list[Callable]] = {}
         self._connected = threading.Event()
         self._loop = None
         self._last_connected_at: float | None = None
         self._last_disconnect_rc: int | None = None
+
+    def _build_client(self) -> mqtt.Client:
+        client = mqtt.Client(
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            # Legacy client-id spelling kept for broker ACL/back-compat.
+            client_id=settings.MQTT_CLIENT_ID,
+            protocol=mqtt.MQTTv311,
+        )
+        if settings.MQTT_USERNAME:
+            client.username_pw_set(
+                settings.MQTT_USERNAME, settings.MQTT_PASSWORD or None
+            )
+        client.on_connect = self._on_connect
+        client.on_message = self._on_message
+        client.on_disconnect = self._on_disconnect
+        return client
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
@@ -108,18 +120,89 @@ class MqttClient:
                     except Exception as e:
                         logger.error(f"MQTT handler error: {e}")
 
-    def start(self):
-        """Connect to broker (blocking, runs client loop in thread)."""
-        self._loop = asyncio.get_event_loop()
-        logger.info(f"Connecting MQTT to {settings.MQTT_BROKER}:{settings.MQTT_PORT}...")
-        self.client.connect_async(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=60)
+    async def _probe_external(self) -> bool:
+        """TCP-reachability probe for the configured external broker."""
+        try:
+            fut = asyncio.open_connection(settings.MQTT_BROKER, settings.MQTT_PORT)
+            reader, writer = await asyncio.wait_for(
+                fut, timeout=settings.MQTT_CONNECT_TIMEOUT
+            )
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except (OSError, RuntimeError):
+                pass
+            return True
+        except (OSError, asyncio.TimeoutError, ConnectionRefusedError):
+            return False
+
+    async def start_embedded(self) -> tuple[str, int]:
+        from app.services.embedded_broker import EmbeddedMqttBroker
+
+        self._embedded = EmbeddedMqttBroker(
+            host=settings.MQTT_EMBEDDED_LISTEN_HOST,
+            port=settings.MQTT_EMBEDDED_LISTEN_PORT,
+        )
+        host, port = await self._embedded.start()
+        self._broker_host, self._broker_port = host, port
+        self.mode = "embedded"
+        return host, port
+
+    async def start(self):
+        """Choose a broker and connect (call from the async app lifespan).
+
+        MQTT_MODE:
+          external — require MQTT_BROKER:MQTT_PORT;
+          embedded — always start the in-process demo broker;
+          auto (default) — use the configured broker when reachable,
+          otherwise start the in-process broker so run.sh always works.
+        """
+        self._loop = asyncio.get_running_loop()
+        mode = settings.MQTT_MODE
+        use_embedded = mode == "embedded"
+        if mode == "auto" and not await self._probe_external():
+            logger.warning(
+                "MQTT broker %s:%s unreachable; falling back to embedded broker",
+                settings.MQTT_BROKER, settings.MQTT_PORT,
+            )
+            use_embedded = True
+        if use_embedded:
+            await self.start_embedded()
+
+        logger.info("Connecting MQTT to %s:%s (mode=%s)", self._broker_host, self._broker_port, self.mode)
+        self.client.connect_async(self._broker_host, self._broker_port, keepalive=60)
         self.client.loop_start()
 
-    def stop(self):
-        """Disconnect from broker."""
-        self.client.loop_stop()
-        self.client.disconnect()
-        logger.info("MQTT disconnected")
+    def start_sync(self):
+        """Legacy synchronous starter; kept for non-lifespan callers/tests."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.start())
+                return
+        except RuntimeError:
+            pass
+        asyncio.run(self.start())
+
+    async def stop(self):
+        """Disconnect and, when we own it, stop the embedded broker."""
+        try:
+            self.client.loop_stop()
+            self.client.disconnect()
+        except Exception:
+            pass
+        if self._embedded is not None:
+            await self._embedded.stop()
+            self._embedded = None
+        logger.info("MQTT disconnected (mode=%s)", self.mode)
+
+    @property
+    def broker_host(self) -> str:
+        return self._broker_host
+
+    @property
+    def broker_port(self) -> int:
+        return self._broker_port
 
     def subscribe(self, topic: str, handler: Callable):
         """Register a handler for a topic pattern."""

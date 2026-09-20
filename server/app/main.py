@@ -60,7 +60,21 @@ async def lifespan(app: FastAPI):
     # unreachable cloud delivery must never stop the local demo from starting.
     await cloud_outbox.start()
 
-    mqtt_client.start()
+    # Choose external broker or the in-process fallback (MQTT_MODE=auto).
+    await mqtt_client.start()
+
+    # Ensure the R528 hub registry row exists for the demo narrative.
+    from app.services.topology import topology
+    await topology.ensure_default_hub()
+
+    # OPE-100 hub contract: edge/<id>/{face,gait,ble,motion,status}.
+    from app.services.edge_ingress import edge_ingress
+    for pattern in edge_ingress.topic_patterns():
+        mqtt_client.subscribe(pattern, edge_ingress.dispatch)
+
+    # Finalize fusion windows that stay "pending" past the evidence timeout
+    # (e.g. beacon seen, no camera presence ever arrives → UNKNOWN-DENY).
+    identity_engine.start_reaper()
 
     # Wire up MQTT → Identity Engine (face / silhouette / ble / status)
     mqtt_client.subscribe(
@@ -101,7 +115,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    mqtt_client.stop()
+    await identity_engine.stop_reaper()
+    await mqtt_client.stop()
     await cloud_outbox.stop()
     logger.info("Application shutdown complete")
 
@@ -174,6 +189,7 @@ def create_app(static_dir: str | Path | None = None) -> FastAPI:
     from app.api.inference import router as inference_router
     from app.api.dashboard import router as dashboard_router
     from app.api.demo import cloud_router, router as demo_router, ws_router as demo_ws_router
+    from app.api.topology import router as topology_router
 
     app.include_router(auth_router)
     app.include_router(persons_router)
@@ -194,6 +210,7 @@ def create_app(static_dir: str | Path | None = None) -> FastAPI:
     app.include_router(demo_router)
     app.include_router(cloud_router)
     app.include_router(demo_ws_router)
+    app.include_router(topology_router)
 
     # Health check
     @app.get("/health")

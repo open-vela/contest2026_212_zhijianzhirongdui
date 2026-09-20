@@ -279,6 +279,86 @@ class Device(Base):
     events = relationship("Event", back_populates="device")
 
 
+# ── Hub (R528 / Gemini-S1 VelaMesh中枢节点) ──────────────────────────
+class Hub(Base):
+    """A R528 hub running openvela that owns a master-slave edge topology."""
+
+    __tablename__ = "hubs"
+
+    id = Column(String(64), primary_key=True)  # stable hub id, e.g. "r528-hub-01"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    name = Column(String(128), default="")
+    model = Column(String(64), default="Gemini-S1/R528")
+    vela_version = Column(String(64), default="")
+    firmware_ver = Column(String(32), default="")
+    ip_address = Column(String(64), default="")
+    is_online = Column(Boolean, default=False)
+    last_heartbeat = Column(DateTime, nullable=True)
+    # Cloud link state drives the offline-queue replay behaviour.
+    cloud_link = Column(String(16), default="unknown")  # online | offline | unknown
+    capabilities_json = Column(JSON, default=list)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    edges = relationship("EdgeNode", back_populates="hub", cascade="all, delete-orphan")
+
+
+# ── EdgeNode (ESP32-S3 从节点) ───────────────────────────────────────
+class EdgeNode(Base):
+    """An ESP32-S3 slave node bound to one R528 hub."""
+
+    __tablename__ = "edge_nodes"
+
+    id = Column(String(64), primary_key=True)  # edge node id (same as MQTT node id)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    hub_id = Column(String(64), ForeignKey("hubs.id"), nullable=True, index=True)
+    name = Column(String(128), default="")
+    board_model = Column(String(64), default="XIAO_ESP32S3_SENSE")
+    firmware_ver = Column(String(32), default="")
+    is_online = Column(Boolean, default=False)
+    last_heartbeat = Column(DateTime, nullable=True)
+    # Capability bits advertised by the edge firmware.
+    cap_face = Column(Boolean, default=False)
+    cap_gait = Column(Boolean, default=False)
+    cap_ble = Column(Boolean, default=False)
+    cap_camera = Column(Boolean, default=False)
+    # Latest telemetry (free-form: rssi / free_heap / fps / light ...).
+    telemetry_json = Column(JSON, default=dict)
+    registered_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "id"),)
+
+    hub = relationship("Hub", back_populates="edges")
+
+
+# ── EdgeEventQueue (断网本地暂存, 恢复补传) ───────────────────────────
+class EdgeEventQueue(Base):
+    """Durable per-hub staging of edge events while the cloud link is down.
+
+    Local policy decisions are made regardless of cloud connectivity; this
+    table only holds the evidence that must be replayed to the cloud/report
+    pipeline after reconnect (status events at minimum).
+    """
+
+    __tablename__ = "edge_event_queue"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    hub_id = Column(String(64), index=True, nullable=True)
+    edge_id = Column(String(64), index=True, default="")
+    channel = Column(String(32), default="status")
+    topic = Column(String(256), default="")
+    payload_json = Column(JSON, default=dict)
+    status = Column(String(16), default="queued", nullable=False)  # queued | sent
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    delivered_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("ix_edge_event_queue_hub_status_created", "hub_id", "status", "created_at"),
+    )
+
+
 # ── Space (area / room / floor / entrance) ──────────────────────────
 class Space(Base):
     __tablename__ = "spaces"
@@ -316,12 +396,21 @@ class Event(Base):
     face_conf = Column(Float, default=0.0)
     gait_conf = Column(Float, default=0.0)
     ble_conf = Column(Float, default=0.0)
+    # Delivery profile (BLE beacon + camera presence): motion/presence score.
+    motion_conf = Column(Float, default=0.0)
     fusion_conf = Column(Float, default=0.0)
     modality_count = Column(Integer, default=0)
     light_level = Column(Float, default=1.0)
     decision = Column(String(32), default="unknown")
     explain_text = Column(Text, default="")
     raw_data_json = Column(JSON, default=dict)
+    # Hub-era explainable decision fields (OPE-100).
+    policy_id = Column(String(32), default="")
+    scenario = Column(String(32), default="")
+    # "delivery" (BLE+motion shipped firmware) or "research" (face/gait/ble).
+    evidence_mode = Column(String(16), default="research")
+    weights_json = Column(JSON, default=dict)
+    hub_id = Column(String(64), default="", index=True)
     is_alert = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

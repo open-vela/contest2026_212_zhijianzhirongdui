@@ -48,6 +48,9 @@ async def init_db():
         DemoMetricSnapshot,
         DemoTelemetry,
         Device,
+        EdgeEventQueue,
+        EdgeNode,
+        Hub,
         EnergyLog,
         Event,
         Face,
@@ -94,6 +97,22 @@ async def _upgrade_sqlite_schema(conn) -> None:
             "ALTER TABLE demo_telemetry ADD COLUMN provenance VARCHAR(32) "
             "NOT NULL DEFAULT 'real'"
         ))
+
+    # OPE-100: hub-era explainable decision columns on the existing events
+    # table. create_all only creates missing *tables*, never missing columns.
+    event_columns = await columns("events")
+    event_additions = {
+        "policy_id": "VARCHAR(32) DEFAULT ''",
+        "scenario": "VARCHAR(32) DEFAULT ''",
+        "weights_json": "JSON DEFAULT '{}'",
+        "hub_id": "VARCHAR(64) DEFAULT ''",
+        # 2026-09-20 BLE+motion delivery profile.
+        "motion_conf": "FLOAT DEFAULT 0.0",
+        "evidence_mode": "VARCHAR(16) DEFAULT 'research'",
+    }
+    for name, ddl in event_additions.items():
+        if name not in event_columns:
+            await conn.execute(text(f"ALTER TABLE events ADD COLUMN {name} {ddl}"))
 
     cloud_columns = await columns("cloud_transfer_events")
     additions = {
