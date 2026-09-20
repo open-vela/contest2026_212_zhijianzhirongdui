@@ -146,19 +146,6 @@ npm run dev
 - [`server/DESIGN.md`](server/DESIGN.md) / [`server/API-DESIGN.md`](server/API-DESIGN.md)
 - [`deploy/demo/README.md`](deploy/demo/README.md)
 
-## 旧名兼容说明
-
-作品由 **Dominiscius · 知鉴** 更名为 **枢络 VelaMesh**。品牌文案已全部替换；
-为不破坏运行中的系统，下列旧拼写标识符刻意保留，不是更名不彻底：
-
-- SQLite 数据库文件名 `data/dominiscius.db`（代码与 `.env.example` 已注释说明）；
-- MQTT client id 默认值 `dominiscius-server`；
-- 日志文件名 `dominiscius.log`；
-- 固件写死、独立于 `vela/` 命名空间的步态 topic 根 `dominiscius/+/gait/result`；
-- `deploy/demo/` 的 `DOMINISCIUS_IMAGE` 变量、镜像名 `dominiscius-demo:0.2.0`、
-  容器/网络名与离线备份文件名。
-
-环境变量名/配置键同理保持旧拼写，避免改名导致跑不起来；各保留点旁均有注释。
 
 ## 许可证
 
