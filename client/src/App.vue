@@ -1,14 +1,23 @@
 <template>
   <n-config-provider :theme="naiveTheme" :theme-overrides="themeOverrides">
-    <div :class="themeClass" :style="cssVars">
-      <router-view />
-    </div>
+    <n-message-provider>
+      <n-dialog-provider>
+        <n-notification-provider>
+          <div :class="themeClass" :style="cssVars">
+            <router-view />
+          </div>
+        </n-notification-provider>
+      </n-dialog-provider>
+    </n-message-provider>
   </n-config-provider>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
-import { NConfigProvider, zhCN, dateZhCN, darkTheme } from 'naive-ui'
+import {
+  NConfigProvider, NMessageProvider, NDialogProvider, NNotificationProvider,
+  zhCN, dateZhCN, darkTheme,
+} from 'naive-ui'
 import { useAppStore } from '@/stores/app'
 import { useVelameshStore } from '@/stores/velamesh'
 
