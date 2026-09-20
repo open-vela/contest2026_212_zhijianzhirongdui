@@ -8,11 +8,15 @@ const routes: RouteRecordRaw[] = [
     name: 'Login',
     component: () => import('@/views/Login.vue'),
   },
-  // 管理端
+  // 管理端 — 枢络 VelaMesh 控制台
   {
     path: '/admin',
     component: () => import('@/components/layout/AdminLayout.vue'),
     children: [
+      { path: 'topology', name: 'Topology', component: () => import('@/views/admin/topology/Index.vue') },
+      { path: 'decisions', name: 'Decisions', component: () => import('@/views/admin/decisions/Index.vue') },
+      { path: 'nodes/:id', name: 'NodeDetail', component: () => import('@/views/admin/nodes/Detail.vue') },
+      { path: 'queue', name: 'OfflineQueue', component: () => import('@/views/admin/queue/Index.vue') },
       { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/admin/dashboard/Index.vue') },
       { path: 'demo', name: 'CompetitionDemo', component: () => import('@/views/admin/demo/Index.vue') },
       { path: 'persons', name: 'Persons', component: () => import('@/views/admin/persons/Index.vue') },
@@ -23,7 +27,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'space', name: 'Space', component: () => import('@/views/admin/space/Index.vue') },
       { path: 'energy', name: 'Energy', component: () => import('@/views/admin/energy/Index.vue') },
       { path: 'settings', name: 'Settings', component: () => import('@/views/admin/settings/Index.vue') },
-      { path: '', redirect: '/admin/dashboard' },
+      { path: '', redirect: '/admin/topology' },
     ],
   },
   // 员工端
@@ -40,9 +44,9 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: '/employee/home' },
     ],
   },
-  // 默认重定向到管理端
-  { path: '/', redirect: '/admin/dashboard' },
-  { path: '/:pathMatch(.*)*', redirect: '/admin/dashboard' },
+  // 默认重定向到拓扑总览
+  { path: '/', redirect: '/admin/topology' },
+  { path: '/:pathMatch(.*)*', redirect: '/admin/topology' },
 ]
 
 const router = createRouter({
@@ -50,11 +54,11 @@ const router = createRouter({
   routes,
 })
 
-// 路由守卫 — A3 后端无认证，仅检查本地 token
+// 路由守卫 — 后端有 JWT 认证；仅检查本地 token 存在
 router.beforeEach((to) => {
   if (to.path === '/login') return true
   const token = localStorage.getItem('token')
-  if (!token && !['/login', '/employee'].some(p => to.path.startsWith(p))) {
+  if (!token && !to.path.startsWith('/employee')) {
     return '/login'
   }
   return true

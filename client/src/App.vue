@@ -10,10 +10,10 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { NConfigProvider, zhCN, dateZhCN, darkTheme } from 'naive-ui'
 import { useAppStore } from '@/stores/app'
-import { useRealtimeStore } from '@/stores/realtime'
+import { useVelameshStore } from '@/stores/velamesh'
 
 const appStore = useAppStore()
-const realtimeStore = useRealtimeStore()
+const velameshStore = useVelameshStore()
 
 const themeClass = computed(() => `theme-${appStore.theme}`)
 const isDark = computed(() => appStore.isDark)
@@ -46,11 +46,12 @@ const cssVars = computed(() => {
 })
 
 onMounted(() => {
-  realtimeStore.startPolling()
+  // 拓扑与决策流 WS：登录后连接、全局复用（未登录不发起，登录页成功后再连）
+  if (localStorage.getItem('token')) velameshStore.connect()
 })
 
 onUnmounted(() => {
-  realtimeStore.stopPolling()
+  velameshStore.disconnect()
 })
 </script>
 

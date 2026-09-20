@@ -8,7 +8,8 @@ export type ColorMode = 'light' | 'dark' | 'auto'
 export const useAppStore = defineStore('app', () => {
   // 主题
   const theme = ref<ThemeId>((localStorage.getItem('theme') as ThemeId) || 'glass')
-  const colorMode = ref<ColorMode>((localStorage.getItem('colorMode') as ColorMode) || 'auto')
+  // 暗色为默认（演示录屏），首次访问即暗色；auto 仍可日落后切换
+  const colorMode = ref<ColorMode>((localStorage.getItem('colorMode') as ColorMode) || 'dark')
 
   const isDark = computed(() => {
     if (colorMode.value === 'auto') {
